@@ -32,25 +32,35 @@ function QuestionField({ q, answers, onAnswerChange, onToggleCheckbox }) {
 
   if (q.type === "radio" && q.options) {
     return (
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-slate-700">{q.label}</p>
-        <div className="flex flex-wrap gap-2">
-          {q.options.map((opt) => (
-            <button
-              type="button"
-              key={opt}
-              className={`px-3 py-1 rounded-full border text-xs transition ${
-                value === opt
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
-              }`}
-              onClick={() => onAnswerChange(q.key, opt)}
-            >
-              {opt}
-            </button>
-          ))}
+      <fieldset className="space-y-1">
+        <legend className="text-xs font-medium text-slate-700">{q.label}</legend>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={q.label}>
+          {q.options.map((opt) => {
+            const id = `${q.key}-${opt}`;
+            return (
+              <label
+                key={opt}
+                htmlFor={id}
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs transition cursor-pointer ${
+                  value === opt
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <input
+                  id={id}
+                  type="radio"
+                  name={q.key}
+                  className="h-4 w-4 accent-slate-900"
+                  checked={value === opt}
+                  onChange={() => onAnswerChange(q.key, opt)}
+                />
+                <span>{opt}</span>
+              </label>
+            );
+          })}
         </div>
-      </div>
+      </fieldset>
     );
   }
 

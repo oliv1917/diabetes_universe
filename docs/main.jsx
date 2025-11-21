@@ -622,25 +622,35 @@ function QuestionField({ q, answers, onAnswerChange, onToggleCheckbox }) {
 
   if (q.type === "radio" && q.options) {
     return (
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-slate-700">{q.label}</p>
-        <div className="flex flex-wrap gap-2">
-          {q.options.map((opt) => (
-            <button
-              type="button"
-              key={opt}
-              className={`px-3 py-1 rounded-full border text-xs transition ${
-                value === opt
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
-              }`}
-              onClick={() => onAnswerChange(q.key, opt)}
-            >
-              {opt}
-            </button>
-          ))}
+      <fieldset className="space-y-1">
+        <legend className="text-xs font-medium text-slate-700">{q.label}</legend>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={q.label}>
+          {q.options.map((opt) => {
+            const id = `${q.key}-${opt}`;
+            return (
+              <label
+                key={opt}
+                htmlFor={id}
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs transition cursor-pointer ${
+                  value === opt
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <input
+                  id={id}
+                  type="radio"
+                  name={q.key}
+                  className="h-4 w-4 accent-slate-900"
+                  checked={value === opt}
+                  onChange={() => onAnswerChange(q.key, opt)}
+                />
+                <span>{opt}</span>
+              </label>
+            );
+          })}
         </div>
-      </div>
+      </fieldset>
     );
   }
 
@@ -684,14 +694,17 @@ function PageContent({
 
   const pageIndex = module.pages.findIndex((p) => p.id === currentPageId);
   const page = pageIndex >= 0 ? module.pages[pageIndex] : undefined;
+  const moduleIndex = MODULES.findIndex((m) => m.id === module.id);
+  const prevModule = moduleIndex > 0 ? MODULES[moduleIndex - 1] : null;
+  const nextModule = moduleIndex < MODULES.length - 1 ? MODULES[moduleIndex + 1] : null;
+  const pageHeadingId = `${module.id}-${currentPageId}-title`;
+  const formHelperId = `${pageHeadingId}-helper`;
 
   const goPrev = () => {
     if (pageIndex > 0) {
       onNavigate(module.id, module.pages[pageIndex - 1].id);
     } else {
-      const moduleIndex = MODULES.findIndex((m) => m.id === module.id);
-      if (moduleIndex > 0) {
-        const prevModule = MODULES[moduleIndex - 1];
+      if (prevModule) {
         onNavigate(prevModule.id, prevModule.pages[prevModule.pages.length - 1].id);
       }
     }
@@ -701,9 +714,7 @@ function PageContent({
     if (pageIndex < module.pages.length - 1 && pageIndex >= 0) {
       onNavigate(module.id, module.pages[pageIndex + 1].id);
     } else {
-      const moduleIndex = MODULES.findIndex((m) => m.id === module.id);
-      if (moduleIndex < MODULES.length - 1 && moduleIndex >= 0) {
-        const nextModule = MODULES[moduleIndex + 1];
+      if (nextModule) {
         onNavigate(nextModule.id, nextModule.pages[0].id);
       }
     }
@@ -734,25 +745,53 @@ function PageContent({
           <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
             {module.title}
           </p>
-          <h2 className="text-xl font-bold mt-1">{page.label}</h2>
+          <h2 id={pageHeadingId} className="text-xl font-bold mt-1">
+            {page.label}
+          </h2>
         </div>
-        <div className="flex gap-2 text-xs">
+        <div className="flex gap-2 text-xs" role="navigation" aria-label="Sidekontrol">
           <button
             className="px-3 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-100"
+            aria-label={
+              pageIndex > 0
+                ? `Gå til forrige side: ${module.pages[pageIndex - 1].label}`
+                : prevModule
+                  ? `Gå til forrige modul: ${prevModule.pages[prevModule.pages.length - 1].label}`
+                  : "Der er ingen forrige side"
+            }
             onClick={goPrev}
+            disabled={pageIndex === 0 && !prevModule}
+            aria-disabled={pageIndex === 0 && !prevModule}
           >
             ← Forrige
           </button>
           <button
             className="px-3 py-1 rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
+            aria-label={
+              pageIndex < module.pages.length - 1
+                ? `Gå til næste side: ${module.pages[pageIndex + 1].label}`
+                : nextModule
+                  ? `Gå til næste modul: ${nextModule.pages[0].label}`
+                  : "Ingen flere sider"
+            }
             onClick={goNext}
+            disabled={!nextModule && pageIndex >= module.pages.length - 1}
+            aria-disabled={!nextModule && pageIndex >= module.pages.length - 1}
           >
             Næste →
           </button>
         </div>
       </div>
 
-      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4 text-sm leading-relaxed">
+      <form
+        className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4 text-sm leading-relaxed"
+        role="form"
+        aria-labelledby={pageHeadingId}
+        aria-describedby={formHelperId}
+      >
+        <p id={formHelperId} className="sr-only">
+          Besvar spørgsmålene på siden for at gemme dine refleksioner. Brug tabulator til at gå mellem felter.
+        </p>
         {page.body.map((para, idx) => (
           <p key={idx}>{para}</p>
         ))}
@@ -766,7 +805,7 @@ function PageContent({
             onToggleCheckbox={onToggleCheckbox}
           />
         ))}
-      </div>
+      </form>
     </div>
   );
 }
@@ -775,7 +814,7 @@ PageContent;
 
 function Navigation({ modules, currentModuleId, visited, rec, goToPage, badges }) {
   return (
-    <aside className="md:w-72 shrink-0 space-y-3">
+    <aside className="md:w-72 shrink-0 space-y-3" aria-label="Navigation og progression">
       <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-sm">
         <h2 className="font-semibold mb-1 text-sm uppercase tracking-wide text-slate-500">
           Forslået progression
@@ -847,14 +886,18 @@ function NextStepCard({ rec, modules, goToPage }) {
 }
 
 function ModuleCard({ module, currentModuleId, visited, goToPage }) {
+  const isCurrent = module.id === currentModuleId;
   return (
-    <div
-      className={`p-3 rounded-2xl border shadow-sm cursor-pointer transition ${
-        module.id === currentModuleId
+    <button
+      type="button"
+      className={`w-full text-left p-3 rounded-2xl border shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 ${
+        isCurrent
           ? "bg-slate-900 text-white border-slate-900"
           : "bg-white text-slate-900 border-slate-200 hover:bg-slate-50"
       }`}
       onClick={() => goToPage(module.id, module.pages[0].id)}
+      aria-current={isCurrent ? "page" : undefined}
+      aria-label={`${module.title}. ${module.pages.length} sider.`}
     >
       <h3 className="font-semibold text-sm mb-1">{module.title}</h3>
       <p className="text-xs opacity-80">{module.description}</p>
@@ -876,7 +919,7 @@ function ModuleCard({ module, currentModuleId, visited, goToPage }) {
           );
         })}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -906,7 +949,11 @@ function ProgressHeader({ completionPct, points, view, onViewChange }) {
           </div>
         </div>
       </div>
-      <div className="max-w-5xl mx-auto px-4 pb-2 flex gap-2 text-sm">
+      <div
+        className="max-w-5xl mx-auto px-4 pb-2 flex gap-2 text-sm"
+        role="group"
+        aria-label="Skift mellem univers og opsummering"
+      >
         <button
           className={`px-3 py-2 rounded-full border transition ${
             view === "univers"
@@ -914,6 +961,8 @@ function ProgressHeader({ completionPct, points, view, onViewChange }) {
               : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
           }`}
           onClick={() => onViewChange("univers")}
+          aria-pressed={view === "univers"}
+          aria-controls="univers-view"
         >
           Univers
         </button>
@@ -924,6 +973,8 @@ function ProgressHeader({ completionPct, points, view, onViewChange }) {
               : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
           }`}
           onClick={() => onViewChange("summary")}
+          aria-pressed={view === "summary"}
+          aria-controls="summary-view"
         >
           Min opsummering
         </button>
@@ -948,8 +999,14 @@ function SummaryView({
 }) {
   return (
     <div className="space-y-4">
-      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
-        <h2 className="text-lg font-bold mb-1">Min opsummering</h2>
+      <section
+        className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm"
+        role="region"
+        aria-labelledby="summary-overview-title"
+      >
+        <h2 id="summary-overview-title" className="text-lg font-bold mb-1">
+          Min opsummering
+        </h2>
         <p className="text-sm text-slate-600 mb-3">
           Her kan du samle det vigtigste fra dit arbejde i appen. Du kan kopiere teksten og gemme
           den til dig selv eller dele den med dit behandlerteam, hvis du har lyst.
@@ -968,12 +1025,19 @@ function SummaryView({
             {badges.length === 0 ? <p>Ingen badges endnu</p> : <p>{badges.join(", ")}</p>}
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
+      <section
+        className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm"
+        role="form"
+        aria-labelledby="summary-actions-title"
+        aria-describedby="summary-actions-desc"
+      >
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h3 className="font-semibold">Tekst-opsummering</h3>
-          <div className="flex flex-wrap gap-2 justify-end">
+          <h3 id="summary-actions-title" className="font-semibold">
+            Tekst-opsummering
+          </h3>
+          <div className="flex flex-wrap gap-2 justify-end" aria-label="Handlinger for opsummering">
             <button
               className="px-3 py-1 text-xs rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
               onClick={onCopy}
@@ -1000,7 +1064,7 @@ function SummaryView({
             </button>
           </div>
         </div>
-        <p className="text-xs text-slate-500 mb-2">
+        <p id="summary-actions-desc" className="text-xs text-slate-500 mb-2">
           {clipboardSupported
             ? "Du kan kopiere eller eksportere teksten. PDF-download bruger browserens print-til-PDF."
             : "Din browser understøtter måske ikke automatisk kopiering – du kan markere og kopiere manuelt."}
@@ -1008,12 +1072,16 @@ function SummaryView({
         <p className="text-[11px] text-slate-400 mb-2">
           Data gemmes lokalt på din enhed ({storageInfo.version}). Brug "Nulstil data" hvis du vil starte forfra.
         </p>
+        <label className="sr-only" htmlFor="summary-textarea">
+          Opsummeringstekst
+        </label>
         <textarea
+          id="summary-textarea"
           className="w-full min-h-[220px] px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 resize-y"
           value={summaryText}
           readOnly
         />
-      </div>
+      </section>
     </div>
   );
 }
@@ -1165,7 +1233,12 @@ function App() {
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-4 pb-16">
         {view === "univers" ? (
-          <div className="flex flex-col md:flex-row gap-4">
+          <section
+            id="univers-view"
+            className="flex flex-col md:flex-row gap-4"
+            role="region"
+            aria-label="Læringsunivers"
+          >
             <Navigation
               modules={MODULES}
               currentModuleId={currentModuleId}
@@ -1185,20 +1258,22 @@ function App() {
                 onToggleCheckbox={toggleCheckbox}
               />
             </div>
-          </div>
+          </section>
         ) : (
-          <SummaryView
-            completionPct={completionPct}
-            points={points}
-            badges={badges}
-            summaryText={summaryText}
-            onCopy={copySummary}
-            onDownloadText={() => downloadSummary("txt")}
-            onDownloadPdf={() => downloadSummary("pdf")}
-            onReset={resetData}
-            clipboardSupported={clipboardSupported}
-            storageInfo={storageInfo}
-          />
+          <section id="summary-view" role="region" aria-label="Opsummering">
+            <SummaryView
+              completionPct={completionPct}
+              points={points}
+              badges={badges}
+              summaryText={summaryText}
+              onCopy={copySummary}
+              onDownloadText={() => downloadSummary("txt")}
+              onDownloadPdf={() => downloadSummary("pdf")}
+              onReset={resetData}
+              clipboardSupported={clipboardSupported}
+              storageInfo={storageInfo}
+            />
+          </section>
         )}
       </main>
     </div>
