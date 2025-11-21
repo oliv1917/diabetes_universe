@@ -2,30 +2,7 @@ const { useState, useEffect } = React;
 
 // Kompakt, data-drevet version af appen så den kan køre i canvas
 
-type QuestionType = "text" | "textarea" | "radio" | "checkbox";
-
-type Question = {
-  key: string;
-  label: string;
-  type: QuestionType;
-  options?: string[]; // bruges til radio/checkbox
-};
-
-type Page = {
-  id: string;
-  label: string;
-  body: string[]; // korte brødtekster
-  questions: Question[];
-};
-
-type ModuleType = {
-  id: string;
-  title: string;
-  description: string;
-  pages: Page[];
-};
-
-const MODULES: ModuleType[] = [
+const MODULES = [
   {
     id: "m1",
     title: "Modul 1: Velkommen & overblik",
@@ -451,45 +428,47 @@ const MODULES: ModuleType[] = [
   }
 ];
 
-const FLAT_PROGRESSION = MODULES.flatMap((m) =>
-  m.pages.map((p) => ({ moduleId: m.id, pageId: p.id }))
-);
+const FLAT_PROGRESSION = MODULES.reduce((acc, module) => {
+  module.pages.forEach((page) => {
+    acc.push({ moduleId: module.id, pageId: page.id });
+  });
+  return acc;
+}, []);
 
-const ALL_QUESTIONS = MODULES.flatMap((m) =>
-  m.pages.flatMap((p) =>
-    p.questions.map((q) => ({
-      moduleId: m.id,
-      pageId: p.id,
-      moduleTitle: m.title,
-      pageLabel: p.label,
-      question: q
-    }))
-  )
-);
+const ALL_QUESTIONS = MODULES.reduce((acc, module) => {
+  module.pages.forEach((page) => {
+    page.questions.forEach((question) => {
+      acc.push({
+        moduleId: module.id,
+        pageId: page.id,
+        moduleTitle: module.title,
+        pageLabel: page.label,
+        question
+      });
+    });
+  });
+  return acc;
+}, []);
 
-const pageKey = (moduleId: string, pageId: string) => `${moduleId}_${pageId}`;
-
-type Answers = Record<string, string | string[]>;
-
-type VisitMap = Record<string, boolean>;
+const pageKey = (moduleId, pageId) => `${moduleId}_${pageId}`;
 
 function App() {
   const [currentModuleId, setCurrentModuleId] = useState("m1");
   const [currentPageId, setCurrentPageId] = useState("p1");
-  const [view, setView] = useState<"univers" | "summary">("univers");
-  const [answers, setAnswers] = useState<Answers>({});
-  const [visited, setVisited] = useState<VisitMap>({});
+  const [view, setView] = useState("univers");
+  const [answers, setAnswers] = useState({});
+  const [visited, setVisited] = useState({});
 
   useEffect(() => {
     const pk = pageKey(currentModuleId, currentPageId);
     setVisited((prev) => (prev[pk] ? prev : { ...prev, [pk]: true }));
   }, [currentModuleId, currentPageId]);
 
-  const handleAnswerChange = (key: string, value: string | string[]) => {
+  const handleAnswerChange = (key, value) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
   };
 
-  const toggleCheckbox = (key: string, option: string) => {
+  const toggleCheckbox = (key, option) => {
     setAnswers((prev) => {
       const existing = Array.isArray(prev[key]) ? prev[key] : [];
       const exists = existing.includes(option);
@@ -500,7 +479,7 @@ function App() {
     });
   };
 
-  const goToPage = (moduleId: string, pageId: string) => {
+  const goToPage = (moduleId, pageId) => {
     setCurrentModuleId(moduleId);
     setCurrentPageId(pageId);
     setView("univers");
@@ -659,14 +638,9 @@ function App() {
   );
 }
 
-type NextStep = { moduleId: string; pageId: string };
-
 function NextStepCard({
   rec,
   goToPage
-}: {
-  rec: NextStep;
-  goToPage: (m: string, p: string) => void;
 }) {
   const module = MODULES.find((m) => m.id === rec.moduleId);
   if (!module) return null;
@@ -692,11 +666,6 @@ function ModuleCard({
   currentModuleId,
   visited,
   goToPage
-}: {
-  module: ModuleType;
-  currentModuleId: string;
-  visited: VisitMap;
-  goToPage: (m: string, p: string) => void;
 }) {
   return (
     <div
@@ -738,13 +707,6 @@ function PageContent({
   answers,
   onAnswerChange,
   onToggleCheckbox
-}: {
-  currentModuleId: string;
-  currentPageId: string;
-  onNavigate: (m: string, p: string) => void;
-  answers: Answers;
-  onAnswerChange: (key: string, value: string | string[]) => void;
-  onToggleCheckbox: (key: string, option: string) => void;
 }) {
   const module = MODULES.find((m) => m.id === currentModuleId);
   if (!module) return <p>Der skete en fejl – modulet blev ikke fundet.</p>;
@@ -843,11 +805,6 @@ function QuestionField({
   answers,
   onAnswerChange,
   onToggleCheckbox
-}: {
-  q: Question;
-  answers: Answers;
-  onAnswerChange: (key: string, value: string | string[]) => void;
-  onToggleCheckbox: (key: string, option: string) => void;
 }) {
   const value = answers[q.key];
 
@@ -857,7 +814,7 @@ function QuestionField({
         <label className="block text-xs font-medium text-slate-700">{q.label}</label>
         <input
           className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-          value={(value as string) || ""}
+          value={typeof value === "string" ? value : ""}
           onChange={(e) => onAnswerChange(q.key, e.target.value)}
         />
       </div>
@@ -871,7 +828,7 @@ function QuestionField({
         <textarea
           className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 resize-y"
           rows={4}
-          value={(value as string) || ""}
+          value={typeof value === "string" ? value : ""}
           onChange={(e) => onAnswerChange(q.key, e.target.value)}
         />
       </div>
@@ -927,33 +884,34 @@ function QuestionField({
   return null;
 }
 
-function computeBadges(visited: VisitMap, answers: Answers): string[] {
-  const badges: string[] = [];
+function computeBadges(visited, answers) {
+  const badges = [];
   const visitedCount = Object.keys(visited).length;
 
+  const toText = (value) => (typeof value === "string" ? value.trim() : "");
+
   const hasGoals =
-    !!(answers["m1_p3_goal1"] as string)?.trim() ||
-    !!(answers["m1_p3_goal2"] as string)?.trim() ||
-    !!(answers["m1_p3_goal3"] as string)?.trim();
+    !!toText(answers["m1_p3_goal1"]) ||
+    !!toText(answers["m1_p3_goal2"]) ||
+    !!toText(answers["m1_p3_goal3"]);
 
   const emotionWork =
     Array.isArray(answers["m2_p1_folelser"]) &&
-    (answers["m2_p1_folelser"] as string[]).length > 0;
+    answers["m2_p1_folelser"].length > 0;
 
   const distressChecked =
     !!answers["m2_p2_belastning"] || !!answers["m2_p2_bekymring"]; // baseline distress
 
   const thoughtSheets =
-    !!(answers["m3_p3_problem"] as string)?.trim() &&
-    (!!(answers["m3_p3_for"] as string)?.trim() ||
-      !!(answers["m3_p3_imod"] as string)?.trim());
+    !!toText(answers["m3_p3_problem"]) &&
+    (!!toText(answers["m3_p3_for"]) || !!toText(answers["m3_p3_imod"]));
 
   const habitsLogged =
-    !!(answers["m4_p1_drain"] as string)?.trim() ||
-    !!(answers["m4_p1_fill"] as string)?.trim() ||
-    !!(answers["m4_p3_lomme"] as string)?.trim();
+    !!toText(answers["m4_p1_drain"]) ||
+    !!toText(answers["m4_p1_fill"]) ||
+    !!toText(answers["m4_p3_lomme"]);
 
-  const finalPlan = !!(answers["m5_p3_plan"] as string)?.trim();
+  const finalPlan = !!toText(answers["m5_p3_plan"]);
 
   if (visitedCount >= 1) badges.push("Jeg er i gang");
   if (visitedCount >= 6) badges.push("God fremdrift");
@@ -974,12 +932,6 @@ function SummaryView({
   points,
   badges,
   onCopy
-}: {
-  answers: Answers;
-  completionPct: number;
-  points: number;
-  badges: string[];
-  onCopy: () => void;
 }) {
   const summaryText = buildSummaryText(answers);
 
@@ -1030,7 +982,7 @@ function SummaryView({
   );
 }
 
-function buildSummaryText(answers: Answers): string {
+function buildSummaryText(answers) {
   if (Object.keys(answers).length === 0) {
     return (
       "Her vil din personlige opsummering stå, når du har udfyldt nogle af øvelserne i appen." +
@@ -1038,7 +990,7 @@ function buildSummaryText(answers: Answers): string {
     );
   }
 
-  const lines: string[] = [];
+  const lines = [];
 
   ALL_QUESTIONS.forEach((entry) => {
     const v = answers[entry.question.key];
