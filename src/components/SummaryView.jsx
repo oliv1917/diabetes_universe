@@ -1,6 +1,17 @@
 import React from "react";
 
-function SummaryView({ completionPct, points, badges, summaryText, onCopy }) {
+function SummaryView({
+  completionPct,
+  points,
+  badges,
+  summaryText,
+  onCopy,
+  onDownloadText,
+  onDownloadPdf,
+  onReset,
+  clipboardSupported,
+  storageInfo
+}) {
   return (
     <div className="space-y-4">
       <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
@@ -28,15 +39,40 @@ function SummaryView({ completionPct, points, badges, summaryText, onCopy }) {
       <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-2">
           <h3 className="font-semibold">Tekst-opsummering</h3>
-          <button
-            className="px-3 py-1 text-xs rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
-            onClick={onCopy}
-          >
-            Kopiér opsummering
-          </button>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button
+              className="px-3 py-1 text-xs rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
+              onClick={onCopy}
+            >
+              Kopiér opsummering
+            </button>
+            <button
+              className="px-3 py-1 text-xs rounded-full border border-slate-200 bg-white hover:bg-slate-100"
+              onClick={onDownloadText}
+            >
+              Download .txt
+            </button>
+            <button
+              className="px-3 py-1 text-xs rounded-full border border-slate-200 bg-white hover:bg-slate-100"
+              onClick={onDownloadPdf}
+            >
+              Download som PDF
+            </button>
+            <button
+              className="px-3 py-1 text-xs rounded-full border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+              onClick={onReset}
+            >
+              Nulstil data
+            </button>
+          </div>
         </div>
         <p className="text-xs text-slate-500 mb-2">
-          Du kan markere og kopiere teksten manuelt, hvis knappen ikke virker på din enhed.
+          {clipboardSupported
+            ? "Du kan kopiere eller eksportere teksten. PDF-download bruger browserens print-til-PDF."
+            : "Din browser understøtter måske ikke automatisk kopiering – du kan markere og kopiere manuelt."}
+        </p>
+        <p className="text-[11px] text-slate-400 mb-2">
+          Data gemmes lokalt på din enhed ({storageInfo.version}). Brug "Nulstil data" hvis du vil starte forfra.
         </p>
         <textarea
           className="w-full min-h-[220px] px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 resize-y"

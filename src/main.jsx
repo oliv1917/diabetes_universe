@@ -6,6 +6,7 @@ import ProgressHeader from "./components/ProgressHeader";
 import SummaryView from "./components/SummaryView";
 import { ALL_QUESTIONS, FLAT_PROGRESSION, MODULES, pageKey } from "./data/modules";
 import { buildSummaryText, computeBadges } from "./utils/summary";
+import { loadPersistedState, persistState, resetPersistedState, storageMetadata } from "./utils/storage";
 
 function App() {
   const [currentModuleId, setCurrentModuleId] = useState("m1");
@@ -13,11 +14,23 @@ function App() {
   const [view, setView] = useState("univers");
   const [answers, setAnswers] = useState({});
   const [visited, setVisited] = useState({});
+  const [clipboardSupported, setClipboardSupported] = useState(false);
+
+  useEffect(() => {
+    const { answers: storedAnswers, visited: storedVisited } = loadPersistedState();
+    if (storedAnswers) setAnswers(storedAnswers);
+    if (storedVisited) setVisited(storedVisited);
+    setClipboardSupported(!!navigator?.clipboard?.writeText);
+  }, []);
 
   useEffect(() => {
     const pk = pageKey(currentModuleId, currentPageId);
     setVisited((prev) => (prev[pk] ? prev : { ...prev, [pk]: true }));
   }, [currentModuleId, currentPageId]);
+
+  useEffect(() => {
+    persistState({ answers, visited });
+  }, [answers, visited]);
 
   const handleAnswerChange = (key, value) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -56,14 +69,77 @@ function App() {
   const points = completedPagesCount * 10;
 
   const summaryText = buildSummaryText(answers, ALL_QUESTIONS);
+  const storageInfo = storageMetadata();
 
   const copySummary = async () => {
+    if (!navigator?.clipboard?.writeText) {
+      alert(
+        "Din browser understøtter ikke automatisk kopiering. Du kan markere og kopiere teksten manuelt."
+      );
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(summaryText);
       alert("Opsummering kopieret til udklipsholder.");
     } catch {
       alert("Kunne ikke kopiere automatisk – du kan selv markere og kopiere teksten.");
     }
+  };
+
+  const downloadSummary = (format) => {
+    const supportsBlob = typeof window !== "undefined" && !!window.Blob && !!window.URL?.createObjectURL;
+    if (format === "txt") {
+      if (!supportsBlob) {
+        alert("Din browser understøtter ikke automatisk download. Kopiér teksten i stedet.");
+        return;
+      }
+      const blob = new Blob([summaryText], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "mit-diabetesliv-opsummering.txt";
+      link.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    if (format === "pdf") {
+      if (!window?.print) {
+        alert("Din browser understøtter ikke print til PDF. Prøv at downloade som tekst i stedet.");
+        return;
+      }
+
+      const printable = window.open("", "_blank");
+      if (!printable) {
+        alert("Vinduet til PDF kunne ikke åbnes. Tillad popups eller brug tekst-download.");
+        return;
+      }
+
+      printable.document.write(
+        `<html><head><title>Opsummering</title></head><body><pre style="white-space: pre-wrap; font-family: inherit;">${summaryText.replaceAll(
+          "&",
+          "&amp;"
+        ).replaceAll("<", "&lt;")}</pre></body></html>`
+      );
+      printable.document.close();
+      printable.focus();
+      printable.print();
+      printable.close();
+    }
+  };
+
+  const resetData = () => {
+    const confirmReset = window.confirm(
+      "Vil du nulstille dine svar og din fremdrift? Dette kan ikke fortrydes."
+    );
+    if (!confirmReset) return;
+    resetPersistedState();
+    setAnswers({});
+    setVisited({});
+    setCurrentModuleId("m1");
+    setCurrentPageId("p1");
+    setView("univers");
   };
 
   return (
@@ -105,6 +181,11 @@ function App() {
             badges={badges}
             summaryText={summaryText}
             onCopy={copySummary}
+            onDownloadText={() => downloadSummary("txt")}
+            onDownloadPdf={() => downloadSummary("pdf")}
+            onReset={resetData}
+            clipboardSupported={clipboardSupported}
+            storageInfo={storageInfo}
           />
         )}
       </main>
