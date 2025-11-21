@@ -1,6 +1,8 @@
-const { useState, useEffect } = React;
-
-// Kompakt, data-drevet version af appen så den kan køre i canvas
+// Auto-generated. Run npm run build to regenerate.
+const React = window.React;
+const ReactDOM = window.ReactDOM;
+const { useEffect, useState } = React;
+const { createRoot } = ReactDOM;
 
 const MODULES = [
   {
@@ -452,253 +454,158 @@ const ALL_QUESTIONS = MODULES.reduce((acc, module) => {
 
 const pageKey = (moduleId, pageId) => `${moduleId}_${pageId}`;
 
-function App() {
-  const [currentModuleId, setCurrentModuleId] = useState("m1");
-  const [currentPageId, setCurrentPageId] = useState("p1");
-  const [view, setView] = useState("univers");
-  const [answers, setAnswers] = useState({});
-  const [visited, setVisited] = useState({});
+function computeBadges(visited, answers) {
+  const badges = [];
+  const visitedCount = Object.keys(visited).length;
 
-  useEffect(() => {
-    const pk = pageKey(currentModuleId, currentPageId);
-    setVisited((prev) => (prev[pk] ? prev : { ...prev, [pk]: true }));
-  }, [currentModuleId, currentPageId]);
+  const toText = (value) => (typeof value === "string" ? value.trim() : "");
 
-  const handleAnswerChange = (key, value) => {
-    setAnswers((prev) => ({ ...prev, [key]: value }));
-  };
+  const hasGoals =
+    !!toText(answers["m1_p3_goal1"]) ||
+    !!toText(answers["m1_p3_goal2"]) ||
+    !!toText(answers["m1_p3_goal3"]);
 
-  const toggleCheckbox = (key, option) => {
-    setAnswers((prev) => {
-      const existing = Array.isArray(prev[key]) ? prev[key] : [];
-      const exists = existing.includes(option);
-      const next = exists
-        ? existing.filter((o) => o !== option)
-        : [...existing, option];
-      return { ...prev, [key]: next };
-    });
-  };
+  const emotionWork =
+    Array.isArray(answers["m2_p1_folelser"]) && answers["m2_p1_folelser"].length > 0;
 
-  const goToPage = (moduleId, pageId) => {
-    setCurrentModuleId(moduleId);
-    setCurrentPageId(pageId);
-    setView("univers");
-  };
+  const distressChecked =
+    !!answers["m2_p2_belastning"] || !!answers["m2_p2_bekymring"]; // baseline distress
 
-  const recommendedNext = () => {
-    for (const step of FLAT_PROGRESSION) {
-      const pk = pageKey(step.moduleId, step.pageId);
-      if (!visited[pk]) return step;
-    }
-    return null;
-  };
+  const thoughtSheets =
+    !!toText(answers["m3_p3_problem"]) &&
+    (!!toText(answers["m3_p3_for"]) || !!toText(answers["m3_p3_imod"]));
 
-  const rec = recommendedNext();
+  const habitsLogged =
+    !!toText(answers["m4_p1_drain"]) ||
+    !!toText(answers["m4_p1_fill"]) ||
+    !!toText(answers["m4_p3_lomme"]);
 
-  const completedPagesCount = Object.keys(visited).length;
-  const totalPages = FLAT_PROGRESSION.length;
-  const completionPct = totalPages
-    ? Math.round((completedPagesCount / totalPages) * 100)
-    : 0;
+  const finalPlan = !!toText(answers["m5_p3_plan"]);
 
-  const badges = computeBadges(visited, answers);
-  const points = completedPagesCount * 10;
+  if (visitedCount >= 1) badges.push("Jeg er i gang");
+  if (visitedCount >= 6) badges.push("God fremdrift");
+  if (hasGoals) badges.push("Målsætter");
+  if (emotionWork || distressChecked) badges.push("Følelsesdetektiv");
+  if (thoughtSheets) badges.push("Tanketræner");
+  if (habitsLogged) badges.push("Hverdagsarkitekt");
+  if (finalPlan && visitedCount === FLAT_PROGRESSION.length) badges.push("Mit Diabetesliv-mester");
+  if (Object.keys(answers).length >= 3) badges.push("Refleksiv bruger");
 
-  const copySummary = async () => {
-    try {
-      await navigator.clipboard.writeText(buildSummaryText(answers));
-      alert("Opsummering kopieret til udklipsholder.");
-    } catch {
-      alert(
-        "Kunne ikke kopiere automatisk – du kan selv markere og kopiere teksten."
-      );
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-      <header className="w-full border-b bg-white/80 backdrop-blur sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Mit Diabetesliv – mental trivsel
-            </h1>
-            <p className="text-sm text-slate-600">
-              Et lille selvhjælpsunivers til dig med type 1-diabetes.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <div className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100">
-              Fremdrift: <span className="font-semibold">{completionPct}%</span>
-            </div>
-            <div className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100">
-              Point: <span className="font-semibold">{points}</span>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-5xl mx-auto px-4 pb-2 flex gap-2 text-sm">
-          <button
-            className={`px-3 py-2 rounded-full border transition ${
-              view === "univers"
-                ? "bg-slate-900 text-white border-slate-900"
-                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-            }`}
-            onClick={() => setView("univers")}
-          >
-            Univers
-          </button>
-          <button
-            className={`px-3 py-2 rounded-full border transition ${
-              view === "summary"
-                ? "bg-slate-900 text-white border-slate-900"
-                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-            }`}
-            onClick={() => setView("summary")}
-          >
-            Min opsummering
-          </button>
-        </div>
-      </header>
-
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-4 pb-16">
-        {view === "univers" ? (
-          <div className="flex flex-col md:flex-row gap-4">
-            <aside className="md:w-72 shrink-0 space-y-3">
-              <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-sm">
-                <h2 className="font-semibold mb-1 text-sm uppercase tracking-wide text-slate-500">
-                  Forslået progression
-                </h2>
-                {rec ? (
-                  <NextStepCard rec={rec} goToPage={goToPage} />
-                ) : (
-                  <p className="text-sm text-emerald-700">
-                    Du har besøgt alle sider. Du kan altid gå tilbage eller bruge
-                    "Min opsummering" til at samle dit arbejde.
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                {MODULES.map((m) => (
-                  <ModuleCard
-                    key={m.id}
-                    module={m}
-                    currentModuleId={currentModuleId}
-                    visited={visited}
-                    goToPage={goToPage}
-                  />
-                ))}
-              </div>
-
-              <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-sm">
-                <h2 className="font-semibold mb-1 text-sm uppercase tracking-wide text-slate-500">
-                  Badges
-                </h2>
-                {badges.length === 0 ? (
-                  <p className="text-xs text-slate-500">
-                    Du låser badges op, når du arbejder med sider og øvelser.
-                  </p>
-                ) : (
-                  <ul className="flex flex-wrap gap-1">
-                    {badges.map((b) => (
-                      <li
-                        key={b}
-                        className="px-2 py-1 text-[11px] rounded-full bg-amber-50 border border-amber-200 text-amber-900"
-                      >
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </aside>
-
-            <section className="flex-1">
-              <PageContent
-                currentModuleId={currentModuleId}
-                currentPageId={currentPageId}
-                onNavigate={goToPage}
-                answers={answers}
-                onAnswerChange={handleAnswerChange}
-                onToggleCheckbox={toggleCheckbox}
-              />
-            </section>
-          </div>
-        ) : (
-          <SummaryView
-            answers={answers}
-            completionPct={completionPct}
-            points={points}
-            badges={badges}
-            onCopy={copySummary}
-          />
-        )}
-      </main>
-    </div>
-  );
+  return Array.from(new Set(badges));
 }
 
-function NextStepCard({
-  rec,
-  goToPage
-}) {
-  const module = MODULES.find((m) => m.id === rec.moduleId);
-  if (!module) return null;
-  const page = module.pages.find((p) => p.id === rec.pageId);
+function buildSummaryText(answers, allQuestions) {
+  if (Object.keys(answers).length === 0) {
+    return (
+      "Her vil din personlige opsummering stå, når du har udfyldt nogle af øvelserne i appen." +
+      "\n\nDu kan frit vælge, hvad du vil dele, hvis du viser det til en behandler."
+    );
+  }
 
-  return (
-    <div>
-      <p className="text-sm mb-2">Næste foreslåede side er:</p>
-      <button
-        className="w-full text-left px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
-        onClick={() => goToPage(rec.moduleId, rec.pageId)}
-      >
-        {module.title}
-        <br />
-        <span className="text-xs text-indigo-100">{page ? page.label : null}</span>
-      </button>
-    </div>
+  const lines = [];
+
+  allQuestions.forEach((entry) => {
+    const v = answers[entry.question.key];
+    if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) return;
+    lines.push(`${entry.moduleTitle} – ${entry.pageLabel}`);
+    lines.push(`Spørgsmål: ${entry.question.label}`);
+    if (Array.isArray(v)) {
+      lines.push(`Svar: ${v.join(", ")}`);
+    } else {
+      lines.push(`Svar: ${v}`);
+    }
+    lines.push("");
+  });
+
+  lines.push(
+    "---",
+    "Denne tekst er genereret ud fra mit arbejde i appen 'Mit Diabetesliv – mental trivsel'.",
+    "Jeg bestemmer selv, hvem jeg vil dele den med, og hvad vi skal fokusere på."
   );
+
+  return lines.join("\n");
 }
 
-function ModuleCard({
-  module,
-  currentModuleId,
-  visited,
-  goToPage
-}) {
-  return (
-    <div
-      className={`p-3 rounded-2xl border shadow-sm cursor-pointer transition ${
-        module.id === currentModuleId
-          ? "bg-slate-900 text-white border-slate-900"
-          : "bg-white text-slate-900 border-slate-200 hover:bg-slate-50"
-      }`}
-      onClick={() => goToPage(module.id, module.pages[0].id)}
-    >
-      <h3 className="font-semibold text-sm mb-1">{module.title}</h3>
-      <p className="text-xs opacity-80">{module.description}</p>
-      <div className="mt-2 flex flex-wrap gap-1 text-[10px]">
-        {module.pages.map((p) => {
-          const pk = pageKey(module.id, p.id);
-          const done = !!visited[pk];
-          return (
-            <span
-              key={p.id}
-              className={`px-2 py-1 rounded-full border ${
-                done
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                  : "bg-slate-50 border-slate-200 text-slate-600"
-              }`}
-            >
-              {p.label.split("–")[0].trim()} {done ? "✓" : ""}
-            </span>
-          );
-        })}
+function QuestionField({ q, answers, onAnswerChange, onToggleCheckbox }) {
+  const value = answers[q.key];
+
+  if (q.type === "text") {
+    return (
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-slate-700">{q.label}</label>
+        <input
+          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onAnswerChange(q.key, e.target.value)}
+        />
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (q.type === "textarea") {
+    return (
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-slate-700">{q.label}</label>
+        <textarea
+          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 resize-y"
+          rows={4}
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onAnswerChange(q.key, e.target.value)}
+        />
+      </div>
+    );
+  }
+
+  if (q.type === "radio" && q.options) {
+    return (
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-slate-700">{q.label}</p>
+        <div className="flex flex-wrap gap-2">
+          {q.options.map((opt) => (
+            <button
+              type="button"
+              key={opt}
+              className={`px-3 py-1 rounded-full border text-xs transition ${
+                value === opt
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
+              }`}
+              onClick={() => onAnswerChange(q.key, opt)}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (q.type === "checkbox" && q.options) {
+    const selected = Array.isArray(value) ? value : [];
+    return (
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-slate-700">{q.label}</p>
+        <div className="flex flex-col gap-1">
+          {q.options.map((opt) => (
+            <label key={opt} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="rounded border-slate-300"
+                checked={selected.includes(opt)}
+                onChange={() => onToggleCheckbox(q.key, opt)}
+              />
+              <span>{opt}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
+
+QuestionField;
 
 function PageContent({
   currentModuleId,
@@ -800,141 +707,170 @@ function PageContent({
   );
 }
 
-function QuestionField({
-  q,
-  answers,
-  onAnswerChange,
-  onToggleCheckbox
-}) {
-  const value = answers[q.key];
+PageContent;
 
-  if (q.type === "text") {
-    return (
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-slate-700">{q.label}</label>
-        <input
-          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onAnswerChange(q.key, e.target.value)}
-        />
+function Navigation({ modules, currentModuleId, visited, rec, goToPage, badges }) {
+  return (
+    <aside className="md:w-72 shrink-0 space-y-3">
+      <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        <h2 className="font-semibold mb-1 text-sm uppercase tracking-wide text-slate-500">
+          Forslået progression
+        </h2>
+        {rec ? (
+          <NextStepCard rec={rec} modules={modules} goToPage={goToPage} />
+        ) : (
+          <p className="text-sm text-emerald-700">
+            Du har besøgt alle sider. Du kan altid gå tilbage eller bruge "Min opsummering"
+            til at samle dit arbejde.
+          </p>
+        )}
       </div>
-    );
-  }
 
-  if (q.type === "textarea") {
-    return (
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-slate-700">{q.label}</label>
-        <textarea
-          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 resize-y"
-          rows={4}
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onAnswerChange(q.key, e.target.value)}
-        />
+      <div className="space-y-2">
+        {modules.map((m) => (
+          <ModuleCard
+            key={m.id}
+            module={m}
+            currentModuleId={currentModuleId}
+            visited={visited}
+            goToPage={goToPage}
+          />
+        ))}
       </div>
-    );
-  }
 
-  if (q.type === "radio" && q.options) {
-    return (
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-slate-700">{q.label}</p>
-        <div className="flex flex-wrap gap-2">
-          {q.options.map((opt) => (
-            <button
-              type="button"
-              key={opt}
-              className={`px-3 py-1 rounded-full border text-xs transition ${
-                value === opt
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
+      <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        <h2 className="font-semibold mb-1 text-sm uppercase tracking-wide text-slate-500">Badges</h2>
+        {badges.length === 0 ? (
+          <p className="text-xs text-slate-500">
+            Du låser badges op, når du arbejder med sider og øvelser.
+          </p>
+        ) : (
+          <ul className="flex flex-wrap gap-1">
+            {badges.map((b) => (
+              <li
+                key={b}
+                className="px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px]"
+              >
+                {b}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function NextStepCard({ rec, modules, goToPage }) {
+  const module = modulesLookup(rec, "module", modules);
+  const page = modulesLookup(rec, "page", modules);
+
+  if (!module) return null;
+
+  return (
+    <div>
+      <p className="text-sm mb-2">Næste foreslåede side er:</p>
+      <button
+        className="w-full text-left px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+        onClick={() => goToPage(rec.moduleId, rec.pageId)}
+      >
+        {module.title}
+        <br />
+        <span className="text-xs text-indigo-100">{page ? page.label : null}</span>
+      </button>
+    </div>
+  );
+}
+
+function ModuleCard({ module, currentModuleId, visited, goToPage }) {
+  return (
+    <div
+      className={`p-3 rounded-2xl border shadow-sm cursor-pointer transition ${
+        module.id === currentModuleId
+          ? "bg-slate-900 text-white border-slate-900"
+          : "bg-white text-slate-900 border-slate-200 hover:bg-slate-50"
+      }`}
+      onClick={() => goToPage(module.id, module.pages[0].id)}
+    >
+      <h3 className="font-semibold text-sm mb-1">{module.title}</h3>
+      <p className="text-xs opacity-80">{module.description}</p>
+      <div className="mt-2 flex flex-wrap gap-1 text-[10px]">
+        {module.pages.map((p) => {
+          const pk = pageKey(module.id, p.id);
+          const done = !!visited[pk];
+          return (
+            <span
+              key={p.id}
+              className={`px-2 py-1 rounded-full border ${
+                done
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  : "bg-slate-50 border-slate-200 text-slate-600"
               }`}
-              onClick={() => onAnswerChange(q.key, opt)}
             >
-              {opt}
-            </button>
-          ))}
-        </div>
+              {p.label.split("–")[0].trim()} {done ? "✓" : ""}
+            </span>
+          );
+        })}
       </div>
-    );
-  }
-
-  if (q.type === "checkbox" && q.options) {
-    const selected = Array.isArray(value) ? value : [];
-    return (
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-slate-700">{q.label}</p>
-        <div className="flex flex-col gap-1">
-          {q.options.map((opt) => (
-            <label key={opt} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="rounded border-slate-300"
-                checked={selected.includes(opt)}
-                onChange={() => onToggleCheckbox(q.key, opt)}
-              />
-              <span>{opt}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 }
 
-function computeBadges(visited, answers) {
-  const badges = [];
-  const visitedCount = Object.keys(visited).length;
-
-  const toText = (value) => (typeof value === "string" ? value.trim() : "");
-
-  const hasGoals =
-    !!toText(answers["m1_p3_goal1"]) ||
-    !!toText(answers["m1_p3_goal2"]) ||
-    !!toText(answers["m1_p3_goal3"]);
-
-  const emotionWork =
-    Array.isArray(answers["m2_p1_folelser"]) &&
-    answers["m2_p1_folelser"].length > 0;
-
-  const distressChecked =
-    !!answers["m2_p2_belastning"] || !!answers["m2_p2_bekymring"]; // baseline distress
-
-  const thoughtSheets =
-    !!toText(answers["m3_p3_problem"]) &&
-    (!!toText(answers["m3_p3_for"]) || !!toText(answers["m3_p3_imod"]));
-
-  const habitsLogged =
-    !!toText(answers["m4_p1_drain"]) ||
-    !!toText(answers["m4_p1_fill"]) ||
-    !!toText(answers["m4_p3_lomme"]);
-
-  const finalPlan = !!toText(answers["m5_p3_plan"]);
-
-  if (visitedCount >= 1) badges.push("Jeg er i gang");
-  if (visitedCount >= 6) badges.push("God fremdrift");
-  if (hasGoals) badges.push("Målsætter");
-  if (emotionWork || distressChecked) badges.push("Følelsesdetektiv");
-  if (thoughtSheets) badges.push("Tanketræner");
-  if (habitsLogged) badges.push("Hverdagsarkitekt");
-  if (finalPlan && visitedCount === FLAT_PROGRESSION.length)
-    badges.push("Mit Diabetesliv-mester");
-  if (Object.keys(answers).length >= 3) badges.push("Refleksiv bruger");
-
-  return Array.from(new Set(badges));
+function modulesLookup(rec, level, modules) {
+  const module = modules.find((m) => m.id === rec.moduleId);
+  if (level === "module") return module;
+  if (!module) return null;
+  return module.pages.find((p) => p.id === rec.pageId);
 }
 
-function SummaryView({
-  answers,
-  completionPct,
-  points,
-  badges,
-  onCopy
-}) {
-  const summaryText = buildSummaryText(answers);
+Navigation;
 
+function ProgressHeader({ completionPct, points, view, onViewChange }) {
+  return (
+    <header className="w-full border-b bg-white/80 backdrop-blur sticky top-0 z-20">
+      <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Mit Diabetesliv – mental trivsel</h1>
+          <p className="text-sm text-slate-600">Et lille selvhjælpsunivers til dig med type 1-diabetes.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <div className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100">
+            Fremdrift: <span className="font-semibold">{completionPct}%</span>
+          </div>
+          <div className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100">
+            Point: <span className="font-semibold">{points}</span>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-5xl mx-auto px-4 pb-2 flex gap-2 text-sm">
+        <button
+          className={`px-3 py-2 rounded-full border transition ${
+            view === "univers"
+              ? "bg-slate-900 text-white border-slate-900"
+              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+          }`}
+          onClick={() => onViewChange("univers")}
+        >
+          Univers
+        </button>
+        <button
+          className={`px-3 py-2 rounded-full border transition ${
+            view === "summary"
+              ? "bg-slate-900 text-white border-slate-900"
+              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+          }`}
+          onClick={() => onViewChange("summary")}
+        >
+          Min opsummering
+        </button>
+      </div>
+    </header>
+  );
+}
+
+ProgressHeader;
+
+function SummaryView({ completionPct, points, badges, summaryText, onCopy }) {
   return (
     <div className="space-y-4">
       <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
@@ -982,46 +918,117 @@ function SummaryView({
   );
 }
 
-function buildSummaryText(answers) {
-  if (Object.keys(answers).length === 0) {
-    return (
-      "Her vil din personlige opsummering stå, når du har udfyldt nogle af øvelserne i appen." +
-      "\n\nDu kan frit vælge, hvad du vil dele, hvis du viser det til en behandler."
-    );
-  }
+SummaryView;
 
-  const lines = [];
+function App() {
+  const [currentModuleId, setCurrentModuleId] = useState("m1");
+  const [currentPageId, setCurrentPageId] = useState("p1");
+  const [view, setView] = useState("univers");
+  const [answers, setAnswers] = useState({});
+  const [visited, setVisited] = useState({});
 
-  ALL_QUESTIONS.forEach((entry) => {
-    const v = answers[entry.question.key];
-    if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) return;
-    lines.push(`${entry.moduleTitle} – ${entry.pageLabel}`);
-    lines.push(`Spørgsmål: ${entry.question.label}`);
-    if (Array.isArray(v)) {
-      lines.push(`Svar: ${v.join(", ")}`);
-    } else {
-      lines.push(`Svar: ${v}`);
+  useEffect(() => {
+    const pk = pageKey(currentModuleId, currentPageId);
+    setVisited((prev) => (prev[pk] ? prev : { ...prev, [pk]: true }));
+  }, [currentModuleId, currentPageId]);
+
+  const handleAnswerChange = (key, value) => {
+    setAnswers((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const toggleCheckbox = (key, option) => {
+    setAnswers((prev) => {
+      const existing = Array.isArray(prev[key]) ? prev[key] : [];
+      const exists = existing.includes(option);
+      const next = exists ? existing.filter((o) => o !== option) : [...existing, option];
+      return { ...prev, [key]: next };
+    });
+  };
+
+  const goToPage = (moduleId, pageId) => {
+    setCurrentModuleId(moduleId);
+    setCurrentPageId(pageId);
+    setView("univers");
+  };
+
+  const recommendedNext = () => {
+    for (const step of FLAT_PROGRESSION) {
+      const pk = pageKey(step.moduleId, step.pageId);
+      if (!visited[pk]) return step;
     }
-    lines.push("");
-  });
+    return null;
+  };
 
-  lines.push(
-    "---",
-    "Denne tekst er genereret ud fra mit arbejde i appen 'Mit Diabetesliv – mental trivsel'.",
-    "Jeg bestemmer selv, hvem jeg vil dele den med, og hvad vi skal fokusere på."
+  const rec = recommendedNext();
+
+  const completedPagesCount = Object.keys(visited).length;
+  const totalPages = FLAT_PROGRESSION.length;
+  const completionPct = totalPages ? Math.round((completedPagesCount / totalPages) * 100) : 0;
+
+  const badges = computeBadges(visited, answers);
+  const points = completedPagesCount * 10;
+
+  const summaryText = buildSummaryText(answers, ALL_QUESTIONS);
+
+  const copySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      alert("Opsummering kopieret til udklipsholder.");
+    } catch {
+      alert("Kunne ikke kopiere automatisk – du kan selv markere og kopiere teksten.");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+      <ProgressHeader
+        completionPct={completionPct}
+        points={points}
+        view={view}
+        onViewChange={setView}
+      />
+
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-4 pb-16">
+        {view === "univers" ? (
+          <div className="flex flex-col md:flex-row gap-4">
+            <Navigation
+              modules={MODULES}
+              currentModuleId={currentModuleId}
+              visited={visited}
+              rec={rec}
+              goToPage={goToPage}
+              badges={badges}
+            />
+
+            <div className="flex-1">
+              <PageContent
+                currentModuleId={currentModuleId}
+                currentPageId={currentPageId}
+                onNavigate={goToPage}
+                answers={answers}
+                onAnswerChange={handleAnswerChange}
+                onToggleCheckbox={toggleCheckbox}
+              />
+            </div>
+          </div>
+        ) : (
+          <SummaryView
+            completionPct={completionPct}
+            points={points}
+            badges={badges}
+            summaryText={summaryText}
+            onCopy={copySummary}
+          />
+        )}
+      </main>
+    </div>
   );
-
-  return lines.join("\n");
 }
 
-// Enkle selvtjek for at sikre, at strukturen hænger sammen
 function _runBasicTests() {
   console.assert(MODULES.length === 5, "Forventer 5 moduler i denne version");
   console.assert(
-    FLAT_PROGRESSION.length === MODULES.reduce(
-      (acc, m) => acc + m.pages.length,
-      0
-    ),
+    FLAT_PROGRESSION.length === MODULES.reduce((acc, m) => acc + m.pages.length, 0),
     "Progressionslængde skal svare til antal sider"
   );
 }
@@ -1030,6 +1037,6 @@ _runBasicTests();
 
 const rootElement = document.getElementById("root");
 if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
+  const root = createRoot(rootElement);
   root.render(<App />);
 }
