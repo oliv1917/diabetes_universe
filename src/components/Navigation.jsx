@@ -3,7 +3,7 @@ import { pageKey } from "../data/modules";
 
 function Navigation({ modules, currentModuleId, visited, rec, goToPage, badges }) {
   return (
-    <aside className="md:w-72 shrink-0 space-y-3">
+    <aside className="md:w-72 shrink-0 space-y-3" aria-label="Navigation og progression">
       <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-sm">
         <h2 className="font-semibold mb-1 text-sm uppercase tracking-wide text-slate-500">
           Forslået progression
@@ -75,14 +75,18 @@ function NextStepCard({ rec, modules, goToPage }) {
 }
 
 function ModuleCard({ module, currentModuleId, visited, goToPage }) {
+  const isCurrent = module.id === currentModuleId;
   return (
-    <div
-      className={`p-3 rounded-2xl border shadow-sm cursor-pointer transition ${
-        module.id === currentModuleId
+    <button
+      type="button"
+      className={`w-full text-left p-3 rounded-2xl border shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 ${
+        isCurrent
           ? "bg-slate-900 text-white border-slate-900"
           : "bg-white text-slate-900 border-slate-200 hover:bg-slate-50"
       }`}
       onClick={() => goToPage(module.id, module.pages[0].id)}
+      aria-current={isCurrent ? "page" : undefined}
+      aria-label={`${module.title}. ${module.pages.length} sider.`}
     >
       <h3 className="font-semibold text-sm mb-1">{module.title}</h3>
       <p className="text-xs opacity-80">{module.description}</p>
@@ -104,7 +108,7 @@ function ModuleCard({ module, currentModuleId, visited, goToPage }) {
           );
         })}
       </div>
-    </div>
+    </button>
   );
 }
 

@@ -17,7 +17,11 @@ function ProgressHeader({ completionPct, points, view, onViewChange }) {
           </div>
         </div>
       </div>
-      <div className="max-w-5xl mx-auto px-4 pb-2 flex gap-2 text-sm">
+      <div
+        className="max-w-5xl mx-auto px-4 pb-2 flex gap-2 text-sm"
+        role="group"
+        aria-label="Skift mellem univers og opsummering"
+      >
         <button
           className={`px-3 py-2 rounded-full border transition ${
             view === "univers"
@@ -25,6 +29,8 @@ function ProgressHeader({ completionPct, points, view, onViewChange }) {
               : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
           }`}
           onClick={() => onViewChange("univers")}
+          aria-pressed={view === "univers"}
+          aria-controls="univers-view"
         >
           Univers
         </button>
@@ -35,6 +41,8 @@ function ProgressHeader({ completionPct, points, view, onViewChange }) {
               : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
           }`}
           onClick={() => onViewChange("summary")}
+          aria-pressed={view === "summary"}
+          aria-controls="summary-view"
         >
           Min opsummering
         </button>

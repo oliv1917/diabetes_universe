@@ -153,7 +153,12 @@ function App() {
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-4 pb-16">
         {view === "univers" ? (
-          <div className="flex flex-col md:flex-row gap-4">
+          <section
+            id="univers-view"
+            className="flex flex-col md:flex-row gap-4"
+            role="region"
+            aria-label="Læringsunivers"
+          >
             <Navigation
               modules={MODULES}
               currentModuleId={currentModuleId}
@@ -173,20 +178,22 @@ function App() {
                 onToggleCheckbox={toggleCheckbox}
               />
             </div>
-          </div>
+          </section>
         ) : (
-          <SummaryView
-            completionPct={completionPct}
-            points={points}
-            badges={badges}
-            summaryText={summaryText}
-            onCopy={copySummary}
-            onDownloadText={() => downloadSummary("txt")}
-            onDownloadPdf={() => downloadSummary("pdf")}
-            onReset={resetData}
-            clipboardSupported={clipboardSupported}
-            storageInfo={storageInfo}
-          />
+          <section id="summary-view" role="region" aria-label="Opsummering">
+            <SummaryView
+              completionPct={completionPct}
+              points={points}
+              badges={badges}
+              summaryText={summaryText}
+              onCopy={copySummary}
+              onDownloadText={() => downloadSummary("txt")}
+              onDownloadPdf={() => downloadSummary("pdf")}
+              onReset={resetData}
+              clipboardSupported={clipboardSupported}
+              storageInfo={storageInfo}
+            />
+          </section>
         )}
       </main>
     </div>
