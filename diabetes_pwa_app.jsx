@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+const { useState, useEffect } = React;
 
 // Kompakt, data-drevet version af appen så den kan køre i canvas
 
@@ -473,7 +473,7 @@ type Answers = Record<string, string | string[]>;
 
 type VisitMap = Record<string, boolean>;
 
-export default function App() {
+function App() {
   const [currentModuleId, setCurrentModuleId] = useState("m1");
   const [currentPageId, setCurrentPageId] = useState("p1");
   const [view, setView] = useState<"univers" | "summary">("univers");
@@ -1075,3 +1075,9 @@ function _runBasicTests() {
 }
 
 _runBasicTests();
+
+const rootElement = document.getElementById("root");
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(<App />);
+}
