@@ -454,6 +454,70 @@ const ALL_QUESTIONS = MODULES.reduce((acc, module) => {
 
 const pageKey = (moduleId, pageId) => `${moduleId}_${pageId}`;
 
+const STORAGE_VERSION = "v1";
+const STORAGE_PREFIX = `diabetes_universe_${STORAGE_VERSION}`;
+
+const KEYS = {
+  answers: `${STORAGE_PREFIX}_answers`,
+  visited: `${STORAGE_PREFIX}_visited`
+};
+
+function storageAvailable() {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return false;
+    const testKey = `${STORAGE_PREFIX}_test`;
+    window.localStorage.setItem(testKey, "1");
+    window.localStorage.removeItem(testKey);
+    return true;
+  } catch (err) {
+    console.warn("Lokal lagring er ikke tilgængelig", err);
+    return false;
+  }
+}
+
+function parseJSON(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch (err) {
+    console.warn("Kunne ikke læse gemte data", err);
+    return fallback;
+  }
+}
+
+function loadPersistedState() {
+  if (!storageAvailable()) return { answers: undefined, visited: undefined };
+
+  const answers = parseJSON(window.localStorage.getItem(KEYS.answers), undefined);
+  const visited = parseJSON(window.localStorage.getItem(KEYS.visited), undefined);
+
+  return { answers, visited };
+}
+
+function persistState({ answers, visited }) {
+  if (!storageAvailable()) return;
+
+  if (answers) {
+    window.localStorage.setItem(KEYS.answers, JSON.stringify(answers));
+  }
+
+  if (visited) {
+    window.localStorage.setItem(KEYS.visited, JSON.stringify(visited));
+  }
+}
+
+function resetPersistedState() {
+  if (!storageAvailable()) return;
+  window.localStorage.removeItem(KEYS.answers);
+  window.localStorage.removeItem(KEYS.visited);
+}
+
+function storageMetadata() {
+  return {
+    version: STORAGE_VERSION,
+    keys: { ...KEYS }
+  };
+}
+
 function computeBadges(visited, answers) {
   const badges = [];
   const visitedCount = Object.keys(visited).length;
@@ -870,7 +934,18 @@ function ProgressHeader({ completionPct, points, view, onViewChange }) {
 
 ProgressHeader;
 
-function SummaryView({ completionPct, points, badges, summaryText, onCopy }) {
+function SummaryView({
+  completionPct,
+  points,
+  badges,
+  summaryText,
+  onCopy,
+  onDownloadText,
+  onDownloadPdf,
+  onReset,
+  clipboardSupported,
+  storageInfo
+}) {
   return (
     <div className="space-y-4">
       <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
@@ -898,15 +973,40 @@ function SummaryView({ completionPct, points, badges, summaryText, onCopy }) {
       <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-2">
           <h3 className="font-semibold">Tekst-opsummering</h3>
-          <button
-            className="px-3 py-1 text-xs rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
-            onClick={onCopy}
-          >
-            Kopiér opsummering
-          </button>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button
+              className="px-3 py-1 text-xs rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
+              onClick={onCopy}
+            >
+              Kopiér opsummering
+            </button>
+            <button
+              className="px-3 py-1 text-xs rounded-full border border-slate-200 bg-white hover:bg-slate-100"
+              onClick={onDownloadText}
+            >
+              Download .txt
+            </button>
+            <button
+              className="px-3 py-1 text-xs rounded-full border border-slate-200 bg-white hover:bg-slate-100"
+              onClick={onDownloadPdf}
+            >
+              Download som PDF
+            </button>
+            <button
+              className="px-3 py-1 text-xs rounded-full border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+              onClick={onReset}
+            >
+              Nulstil data
+            </button>
+          </div>
         </div>
         <p className="text-xs text-slate-500 mb-2">
-          Du kan markere og kopiere teksten manuelt, hvis knappen ikke virker på din enhed.
+          {clipboardSupported
+            ? "Du kan kopiere eller eksportere teksten. PDF-download bruger browserens print-til-PDF."
+            : "Din browser understøtter måske ikke automatisk kopiering – du kan markere og kopiere manuelt."}
+        </p>
+        <p className="text-[11px] text-slate-400 mb-2">
+          Data gemmes lokalt på din enhed ({storageInfo.version}). Brug "Nulstil data" hvis du vil starte forfra.
         </p>
         <textarea
           className="w-full min-h-[220px] px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 resize-y"
@@ -926,11 +1026,23 @@ function App() {
   const [view, setView] = useState("univers");
   const [answers, setAnswers] = useState({});
   const [visited, setVisited] = useState({});
+  const [clipboardSupported, setClipboardSupported] = useState(false);
+
+  useEffect(() => {
+    const { answers: storedAnswers, visited: storedVisited } = loadPersistedState();
+    if (storedAnswers) setAnswers(storedAnswers);
+    if (storedVisited) setVisited(storedVisited);
+    setClipboardSupported(!!navigator?.clipboard?.writeText);
+  }, []);
 
   useEffect(() => {
     const pk = pageKey(currentModuleId, currentPageId);
     setVisited((prev) => (prev[pk] ? prev : { ...prev, [pk]: true }));
   }, [currentModuleId, currentPageId]);
+
+  useEffect(() => {
+    persistState({ answers, visited });
+  }, [answers, visited]);
 
   const handleAnswerChange = (key, value) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -969,14 +1081,77 @@ function App() {
   const points = completedPagesCount * 10;
 
   const summaryText = buildSummaryText(answers, ALL_QUESTIONS);
+  const storageInfo = storageMetadata();
 
   const copySummary = async () => {
+    if (!navigator?.clipboard?.writeText) {
+      alert(
+        "Din browser understøtter ikke automatisk kopiering. Du kan markere og kopiere teksten manuelt."
+      );
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(summaryText);
       alert("Opsummering kopieret til udklipsholder.");
     } catch {
       alert("Kunne ikke kopiere automatisk – du kan selv markere og kopiere teksten.");
     }
+  };
+
+  const downloadSummary = (format) => {
+    const supportsBlob = typeof window !== "undefined" && !!window.Blob && !!window.URL?.createObjectURL;
+    if (format === "txt") {
+      if (!supportsBlob) {
+        alert("Din browser understøtter ikke automatisk download. Kopiér teksten i stedet.");
+        return;
+      }
+      const blob = new Blob([summaryText], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "mit-diabetesliv-opsummering.txt";
+      link.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    if (format === "pdf") {
+      if (!window?.print) {
+        alert("Din browser understøtter ikke print til PDF. Prøv at downloade som tekst i stedet.");
+        return;
+      }
+
+      const printable = window.open("", "_blank");
+      if (!printable) {
+        alert("Vinduet til PDF kunne ikke åbnes. Tillad popups eller brug tekst-download.");
+        return;
+      }
+
+      printable.document.write(
+        `<html><head><title>Opsummering</title></head><body><pre style="white-space: pre-wrap; font-family: inherit;">${summaryText.replaceAll(
+          "&",
+          "&amp;"
+        ).replaceAll("<", "&lt;")}</pre></body></html>`
+      );
+      printable.document.close();
+      printable.focus();
+      printable.print();
+      printable.close();
+    }
+  };
+
+  const resetData = () => {
+    const confirmReset = window.confirm(
+      "Vil du nulstille dine svar og din fremdrift? Dette kan ikke fortrydes."
+    );
+    if (!confirmReset) return;
+    resetPersistedState();
+    setAnswers({});
+    setVisited({});
+    setCurrentModuleId("m1");
+    setCurrentPageId("p1");
+    setView("univers");
   };
 
   return (
@@ -1018,6 +1193,11 @@ function App() {
             badges={badges}
             summaryText={summaryText}
             onCopy={copySummary}
+            onDownloadText={() => downloadSummary("txt")}
+            onDownloadPdf={() => downloadSummary("pdf")}
+            onReset={resetData}
+            clipboardSupported={clipboardSupported}
+            storageInfo={storageInfo}
           />
         )}
       </main>

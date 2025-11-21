@@ -6,6 +6,7 @@ const docsDir = path.join(rootDir, "docs");
 
 const sourceOrder = [
   "src/data/modules.js",
+  "src/utils/storage.js",
   "src/utils/summary.js",
   "src/components/QuestionField.jsx",
   "src/components/PageContent.jsx",
